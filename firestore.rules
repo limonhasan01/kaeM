@@ -1,0 +1,781 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 4.1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Phase 3: Hardened Global Primitives
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidDateString(val) {
+      return val is string && val.size() == 10 && val.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    function isAdmin() {
+      return isVerified() && (
+        request.auth.token.email == 'mdraihanrahmanlimon01@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isWorkspaceOwner(workspaceId) {
+      return isVerified() && (
+        (
+          exists(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+          get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid
+        ) ||
+        (
+          existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId)) &&
+          getAfter(/databases/$(database)/documents/workspaces/$(workspaceId)).data.ownerId == request.auth.uid
+        )
+      );
+    }
+
+    function memberExists(workspaceId, memberId) {
+      return exists(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(memberId)) ||
+        existsAfter(/databases/$(database)/documents/workspaces/$(workspaceId)/members/$(memberId));
+    }
+
+    // =========================================================================
+    // Entity Validation Blueprints (Anti-Update-Gap)
+    // =========================================================================
+    function isValidWorkspace(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'name',
+          'rent',
+          'electric',
+          'gas',
+          'other',
+          'linkedSpreadsheetId',
+          'linkedSpreadsheetTitle',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'name',
+          'rent',
+          'electric',
+          'gas',
+          'other',
+          'linkedSpreadsheetId',
+          'linkedSpreadsheetTitle',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.rent is number && data.rent >= 0 && data.rent <= 1000000 &&
+        data.electric is number && data.electric >= 0 && data.electric <= 1000000 &&
+        data.gas is number && data.gas >= 0 && data.gas <= 1000000 &&
+        data.other is number && data.other >= 0 && data.other <= 1000000 &&
+        data.linkedSpreadsheetId is string && data.linkedSpreadsheetId.size() <= 128 &&
+        (data.linkedSpreadsheetId.size() == 0 || isValidId(data.linkedSpreadsheetId)) &&
+        data.linkedSpreadsheetTitle is string && data.linkedSpreadsheetTitle.size() <= 200 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMessMember(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'name',
+          'username',
+          'phone',
+          'whatsapp',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'name',
+          'username',
+          'phone',
+          'whatsapp',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+        data.username is string && data.username.size() >= 1 && data.username.size() <= 60 &&
+        data.username.matches('^[a-zA-Z0-9_.\\-]+$') &&
+        data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 30 &&
+        data.phone.matches('^[0-9+\\-() ]+$') &&
+        data.whatsapp is string && data.whatsapp.size() >= 3 && data.whatsapp.size() <= 30 &&
+        data.whatsapp.matches('^[0-9+\\-() ]+$') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidMealEntry(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'memberId',
+          'breakfast',
+          'lunch',
+          'dinner',
+          'guest',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'memberId',
+          'breakfast',
+          'lunch',
+          'dinner',
+          'guest',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        isValidDateString(data.date) &&
+        isValidId(data.memberId) &&
+        data.breakfast is number && (data.breakfast == 0 || data.breakfast == 0.5) &&
+        data.lunch is number && (data.lunch == 0 || data.lunch == 1) &&
+        data.dinner is number && (data.dinner == 0 || data.dinner == 1) &&
+        data.guest is number && data.guest >= 0 && data.guest <= 50 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBazarRecord(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'shopperIds',
+          'items',
+          'amount',
+          'previousAmount',
+          'editCount',
+          'editedAt',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'shopperIds',
+          'items',
+          'amount',
+          'previousAmount',
+          'editCount',
+          'editedAt',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        isValidDateString(data.date) &&
+        data.shopperIds is list && data.shopperIds.size() >= 1 && data.shopperIds.size() <= 20 &&
+        data.shopperIds[0] is string && data.shopperIds[0].size() >= 1 && data.shopperIds[0].size() <= 128 &&
+        data.items is string && data.items.size() >= 1 && data.items.size() <= 500 &&
+        data.amount is number && data.amount > 0 && data.amount <= 1000000 &&
+        data.previousAmount is number && data.previousAmount >= 0 && data.previousAmount <= 1000000 &&
+        data.editCount is number && data.editCount >= 0 && data.editCount <= 1000 &&
+        data.editedAt is string && data.editedAt.size() <= 10 &&
+        (data.editedAt.size() == 0 || isValidDateString(data.editedAt)) &&
+        data.status is string && data.status.size() <= 20 && (data.status == 'pending' || data.status == 'approved') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBazarRequisitionRecord(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'shopperIds',
+          'items',
+          'estimatedAmount',
+          'note',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'shopperIds',
+          'items',
+          'estimatedAmount',
+          'note',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        isValidDateString(data.date) &&
+        data.shopperIds is list && data.shopperIds.size() >= 1 && data.shopperIds.size() <= 20 &&
+        data.shopperIds[0] is string && data.shopperIds[0].size() >= 1 && data.shopperIds[0].size() <= 128 &&
+        data.items is string && data.items.size() >= 1 && data.items.size() <= 500 &&
+        data.estimatedAmount is number && data.estimatedAmount >= 0 && data.estimatedAmount <= 1000000 &&
+        data.note is string && data.note.size() <= 300 &&
+        data.status is string && data.status.size() <= 20 && (data.status == 'scheduled' || data.status == 'completed') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidDepositRecord(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'memberId',
+          'amount',
+          'note',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'memberId',
+          'amount',
+          'note',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        isValidDateString(data.date) &&
+        isValidId(data.memberId) &&
+        data.amount is number && data.amount > 0 && data.amount <= 1000000 &&
+        data.note is string && data.note.size() >= 1 && data.note.size() <= 300 &&
+        data.status is string && data.status.size() <= 20 && (data.status == 'pending' || data.status == 'approved') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFineRecord(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'memberId',
+          'reason',
+          'amount',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'date',
+          'memberId',
+          'reason',
+          'amount',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        isValidDateString(data.date) &&
+        isValidId(data.memberId) &&
+        data.reason is string && data.reason.size() >= 1 && data.reason.size() <= 300 &&
+        data.amount is number && data.amount > 0 && data.amount <= 100000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidPendingRequestRecord(data, workspaceId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'workspaceId',
+          'requestType',
+          'requestedBy',
+          'date',
+          'details',
+          'status',
+          'targetMemberId',
+          'mealType',
+          'isChecked',
+          'guestCount',
+          'shopperIds',
+          'items',
+          'amount',
+          'note',
+          'newName',
+          'newPhone',
+          'newUsername',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'workspaceId',
+          'requestType',
+          'requestedBy',
+          'date',
+          'details',
+          'status',
+          'targetMemberId',
+          'mealType',
+          'isChecked',
+          'guestCount',
+          'shopperIds',
+          'items',
+          'amount',
+          'note',
+          'newName',
+          'newPhone',
+          'newUsername',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.ownerId) &&
+        data.workspaceId is string && data.workspaceId == workspaceId && isValidId(data.workspaceId) &&
+        data.requestType is string && data.requestType.size() <= 30 && (
+          data.requestType == 'MEAL_CHANGE' ||
+          data.requestType == 'GUEST_MEAL' ||
+          data.requestType == 'BAZAR_ENTRY' ||
+          data.requestType == 'DEPOSIT_ENTRY' ||
+          data.requestType == 'PROFILE_EDIT'
+        ) &&
+        data.requestedBy is string && data.requestedBy.size() >= 1 && data.requestedBy.size() <= 100 &&
+        isValidDateString(data.date) &&
+        data.details is string && data.details.size() >= 1 && data.details.size() <= 500 &&
+        data.status is string && data.status.size() <= 20 && (
+          data.status == 'pending' ||
+          data.status == 'approved' ||
+          data.status == 'rejected'
+        ) &&
+        data.targetMemberId is string && data.targetMemberId.size() <= 128 &&
+        data.mealType is string && data.mealType.size() <= 20 &&
+        data.isChecked is bool &&
+        data.guestCount is number && data.guestCount >= 0 && data.guestCount <= 50 &&
+        data.shopperIds is list && data.shopperIds.size() <= 20 &&
+        (data.shopperIds.size() == 0 || (data.shopperIds[0] is string && data.shopperIds[0].size() <= 128)) &&
+        data.items is string && data.items.size() <= 500 &&
+        data.amount is number && data.amount >= 0 && data.amount <= 1000000 &&
+        data.note is string && data.note.size() <= 300 &&
+        data.newName is string && data.newName.size() <= 100 &&
+        data.newPhone is string && data.newPhone.size() <= 30 &&
+        data.newUsername is string && data.newUsername.size() <= 60 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection 1: /admins/{adminId} (System-Only Admin Registry)
+    // =========================================================================
+    match /admins/{adminId} {
+      allow get: if isVerified() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if false;
+      allow create, update, delete: if false;
+    }
+
+    // =========================================================================
+    // Collection 2: /workspaces/{workspaceId} (Root Mess Container)
+    // =========================================================================
+    match /workspaces/{workspaceId} {
+      allow get: if isVerified() && isValidId(workspaceId) && (
+        existing().ownerId == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerified() && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerified() &&
+        isValidId(workspaceId) &&
+        isValidWorkspace(incoming()) &&
+        incoming().ownerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerified() &&
+        isValidId(workspaceId) &&
+        isValidWorkspace(incoming()) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() ||
+          (
+            existing().ownerId == request.auth.uid && (
+              incoming().diff(existing()).affectedKeys().hasOnly(['rent', 'electric', 'gas', 'other', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly(['linkedSpreadsheetId', 'linkedSpreadsheetTitle', 'updatedAt']) ||
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'name',
+                'rent',
+                'electric',
+                'gas',
+                'other',
+                'linkedSpreadsheetId',
+                'linkedSpreadsheetTitle',
+                'updatedAt'
+              ])
+            )
+          )
+        );
+
+      allow delete: if isVerified() && isValidId(workspaceId) && (
+        existing().ownerId == request.auth.uid || isAdmin()
+      );
+
+      // =======================================================================
+      // Subcollection 2A: /workspaces/{workspaceId}/members/{memberId} (PII Isolated)
+      // =======================================================================
+      match /members/{memberId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(memberId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(memberId) &&
+          isValidMessMember(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(memberId) &&
+          isValidMessMember(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['name', 'username', 'phone', 'whatsapp', 'updatedAt'])
+            )
+          );
+
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(memberId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+      }
+
+      // =======================================================================
+      // Subcollection 2B: /workspaces/{workspaceId}/mealEntries/{mealEntryId}
+      // =======================================================================
+      match /mealEntries/{mealEntryId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(mealEntryId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(mealEntryId) &&
+          isValidMealEntry(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          memberExists(workspaceId, incoming().memberId) &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(mealEntryId) &&
+          isValidMealEntry(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().memberId == existing().memberId &&
+          incoming().date == existing().date &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['breakfast', 'lunch', 'dinner', 'guest', 'updatedAt'])
+            )
+          );
+
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(mealEntryId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+      }
+
+      // =======================================================================
+      // Subcollection 2C: /workspaces/{workspaceId}/bazarEntries/{bazarId}
+      // Permanent Non-Deletable Ledger with Monotonic Edit Audit Trail
+      // =======================================================================
+      match /bazarEntries/{bazarId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(bazarId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(bazarId) &&
+          isValidBazarRecord(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          memberExists(workspaceId, incoming().shopperIds[0]) &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(bazarId) &&
+          isValidBazarRecord(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().editCount >= existing().editCount && (
+            isAdmin() ||
+            (
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) && (
+                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'date',
+                  'shopperIds',
+                  'items',
+                  'amount',
+                  'previousAmount',
+                  'editCount',
+                  'editedAt',
+                  'status',
+                  'updatedAt'
+                ])
+              )
+            )
+          );
+
+        // Anti-tamper invariant: recorded bazar ledger entries can never be deleted
+        allow delete: if false;
+      }
+
+      // =======================================================================
+      // Subcollection 2C-2: /workspaces/{workspaceId}/bazarRequests/{bazarReqId}
+      // =======================================================================
+      match /bazarRequests/{bazarReqId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(bazarReqId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(bazarReqId) &&
+          isValidBazarRequisitionRecord(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          memberExists(workspaceId, incoming().shopperIds[0]) &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(bazarReqId) &&
+          isValidBazarRequisitionRecord(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              existing().status == 'scheduled' &&
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) && (
+                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+                incoming().diff(existing()).affectedKeys().hasOnly([
+                  'date',
+                  'shopperIds',
+                  'items',
+                  'estimatedAmount',
+                  'note',
+                  'status',
+                  'updatedAt'
+                ])
+              )
+            )
+          );
+
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(bazarReqId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+      }
+
+      // =======================================================================
+      // Subcollection 2D: /workspaces/{workspaceId}/deposits/{depositId}
+      // =======================================================================
+      match /deposits/{depositId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(depositId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(depositId) &&
+          isValidDepositRecord(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          memberExists(workspaceId, incoming().memberId) &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(depositId) &&
+          isValidDepositRecord(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().memberId == existing().memberId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              existing().status == 'pending' &&
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) && (
+                incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) ||
+                incoming().diff(existing()).affectedKeys().hasOnly(['date', 'amount', 'note', 'status', 'updatedAt'])
+              )
+            )
+          );
+
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(depositId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+      }
+
+      // =======================================================================
+      // Subcollection 2E: /workspaces/{workspaceId}/fines/{fineId}
+      // =======================================================================
+      match /fines/{fineId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(fineId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(fineId) &&
+          isValidFineRecord(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          memberExists(workspaceId, incoming().memberId) &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(fineId) &&
+          isValidFineRecord(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().memberId == existing().memberId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['date', 'reason', 'amount', 'updatedAt'])
+            )
+          );
+
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(fineId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+      }
+
+      // =======================================================================
+      // Subcollection 2F: /workspaces/{workspaceId}/pendingRequests/{requestId}
+      // =======================================================================
+      match /pendingRequests/{requestId} {
+        allow get: if isVerified() && isValidId(workspaceId) && isValidId(requestId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+        allow list: if isVerified() && isValidId(workspaceId) &&
+          existing().ownerId == request.auth.uid &&
+          existing().workspaceId == workspaceId;
+
+        allow create: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(requestId) &&
+          isValidPendingRequestRecord(incoming(), workspaceId) &&
+          incoming().ownerId == request.auth.uid &&
+          incoming().status == 'pending' &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          (isWorkspaceOwner(workspaceId) || isAdmin());
+
+        allow update: if isVerified() &&
+          isValidId(workspaceId) &&
+          isValidId(requestId) &&
+          isValidPendingRequestRecord(incoming(), workspaceId) &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().workspaceId == existing().workspaceId &&
+          incoming().requestType == existing().requestType &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time && (
+            isAdmin() ||
+            (
+              existing().status == 'pending' &&
+              existing().ownerId == request.auth.uid &&
+              isWorkspaceOwner(workspaceId) &&
+              incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+            )
+          );
+
+        allow delete: if isVerified() && isValidId(workspaceId) && isValidId(requestId) && (
+          (existing().ownerId == request.auth.uid && isWorkspaceOwner(workspaceId)) || isAdmin()
+        );
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix মেস ম্যানেজার — Bachelor Mess \u0026 Meal App",
+  "description": "স্মার্ট ব্যাচেলর মেস ও মিল ম্যানেজার অ্যান্ড্রয়েড অ্যাপ — দৈনিক ৩ বেলা মিল সুইচার, যৌথ বাজার খাতা, ডিপোজিট, গ্রাফিক্যাল অ্যানালিটিক্স এবং এডমিন অ্যাপ্রুভাল সিস্টেম।",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

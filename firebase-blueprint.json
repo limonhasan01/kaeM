@@ -1,0 +1,716 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "System-provisioned administrator registry document keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified administrator email address.",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin entry was created."
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "Workspace": {
+      "title": "Workspace",
+      "description": "Root bachelor mess workspace container owned by an authenticated Google user, holding utility rates and linked Google Sheet metadata.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the workspace owner (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display title of the mess workspace.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "rent": {
+          "type": "number",
+          "description": "Monthly mess house rent in BDT."
+        },
+        "electric": {
+          "type": "number",
+          "description": "Monthly electricity bill in BDT."
+        },
+        "gas": {
+          "type": "number",
+          "description": "Monthly gas bill in BDT."
+        },
+        "other": {
+          "type": "number",
+          "description": "Monthly cook, internet, and miscellaneous utility bill in BDT."
+        },
+        "linkedSpreadsheetId": {
+          "type": "string",
+          "description": "Optional connected Google Sheets spreadsheet ID.",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "linkedSpreadsheetTitle": {
+          "type": "string",
+          "description": "Optional connected Google Sheets spreadsheet title.",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of workspace creation (immutable)."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of latest workspace update."
+        }
+      },
+      "required": [
+        "ownerId",
+        "name",
+        "rent",
+        "electric",
+        "gas",
+        "other",
+        "linkedSpreadsheetId",
+        "linkedSpreadsheetTitle",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MessMember": {
+      "title": "MessMember",
+      "description": "Member directory record within a workspace. Contains member phone PII strictly isolated to workspace owner and admin.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace document ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Member full or display name.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique handle within the mess.",
+          "minLength": 1,
+          "maxLength": 60,
+          "pattern": "^[a-zA-Z0-9_.\\-]+$"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Member mobile phone number (PII isolated to owner/admin).",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^[0-9+\\-() ]+$"
+        },
+        "whatsapp": {
+          "type": "string",
+          "description": "Member WhatsApp number for 1-click bazar duty & receipt dispatch (PII isolated to owner/admin).",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^[0-9+\\-() ]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "name",
+        "username",
+        "phone",
+        "whatsapp",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MealEntry": {
+      "title": "MealEntry",
+      "description": "Daily meal units (breakfast, lunch, dinner, guest) for one member on one date.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "ISO calendar date YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "memberId": {
+          "type": "string",
+          "description": "Referenced member ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "breakfast": {
+          "type": "number",
+          "description": "Breakfast meal unit (0 or 0.5)."
+        },
+        "lunch": {
+          "type": "number",
+          "description": "Lunch meal unit (0 or 1)."
+        },
+        "dinner": {
+          "type": "number",
+          "description": "Dinner meal unit (0 or 1)."
+        },
+        "guest": {
+          "type": "number",
+          "description": "Guest meal count (>= 0 and <= 50)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "date",
+        "memberId",
+        "breakfast",
+        "lunch",
+        "dinner",
+        "guest",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BazarRecord": {
+      "title": "BazarRecord",
+      "description": "Joint grocery shopping expense entry with bounded shopper list, monotonic edit audit trail, and non-deletable permanent ledger protection.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Shopping date YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "shopperIds": {
+          "type": "array",
+          "description": "Bounded list (1..20) of participating member IDs."
+        },
+        "items": {
+          "type": "string",
+          "description": "Purchased items description.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "amount": {
+          "type": "number",
+          "description": "Total expense in BDT (> 0 and <= 1000000)."
+        },
+        "previousAmount": {
+          "type": "number",
+          "description": "Previous amount before last admin edit in BDT (0 when unedited)."
+        },
+        "editCount": {
+          "type": "number",
+          "description": "Monotonic count of admin edits (>= 0 and <= 1000)."
+        },
+        "editedAt": {
+          "type": "string",
+          "description": "Date of last admin edit YYYY-MM-DD or empty string.",
+          "minLength": 0,
+          "maxLength": 10
+        },
+        "status": {
+          "type": "string",
+          "description": "Approval state.",
+          "enum": ["pending", "approved"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "date",
+        "shopperIds",
+        "items",
+        "amount",
+        "previousAmount",
+        "editCount",
+        "editedAt",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DepositRecord": {
+      "title": "DepositRecord",
+      "description": "Member cash or mobile banking deposit record with terminal approval lock.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Deposit date YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "memberId": {
+          "type": "string",
+          "description": "Depositing member ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Deposit amount in BDT (> 0 and <= 1000000)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Payment method or reference note.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "status": {
+          "type": "string",
+          "description": "Approval state; terminal once approved.",
+          "enum": ["pending", "approved"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "date",
+        "memberId",
+        "amount",
+        "note",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FineRecord": {
+      "title": "FineRecord",
+      "description": "Penalty or fine entry assigned to a mess member.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Fine date YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "memberId": {
+          "type": "string",
+          "description": "Penalized member ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for fine.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "amount": {
+          "type": "number",
+          "description": "Fine amount in BDT (> 0 and <= 100000)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "date",
+        "memberId",
+        "reason",
+        "amount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PendingRequestRecord": {
+      "title": "PendingRequestRecord",
+      "description": "Approval queue item for member-initiated meal, bazar, deposit, or profile edit requests.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestType": {
+          "type": "string",
+          "description": "Type of pending request.",
+          "enum": ["MEAL_CHANGE", "GUEST_MEAL", "BAZAR_ENTRY", "DEPOSIT_ENTRY", "PROFILE_EDIT"]
+        },
+        "requestedBy": {
+          "type": "string",
+          "description": "Name of member submitting the request.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "date": {
+          "type": "string",
+          "description": "Target date YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "details": {
+          "type": "string",
+          "description": "Human-readable summary of the requested change.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "description": "Queue status; terminal once approved or rejected.",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "targetMemberId": {
+          "type": "string",
+          "description": "Target member ID if applicable.",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "mealType": {
+          "type": "string",
+          "description": "Target meal slot if MEAL_CHANGE.",
+          "minLength": 0,
+          "maxLength": 20
+        },
+        "isChecked": {
+          "type": "boolean",
+          "description": "Desired meal state if MEAL_CHANGE."
+        },
+        "guestCount": {
+          "type": "number",
+          "description": "Guest meal count if GUEST_MEAL."
+        },
+        "shopperIds": {
+          "type": "array",
+          "description": "Bounded list (0..20) of shopper IDs if BAZAR_ENTRY."
+        },
+        "items": {
+          "type": "string",
+          "description": "Items text if BAZAR_ENTRY.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount in BDT if BAZAR_ENTRY or DEPOSIT_ENTRY."
+        },
+        "note": {
+          "type": "string",
+          "description": "Deposit note if DEPOSIT_ENTRY.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "newName": {
+          "type": "string",
+          "description": "New member name if PROFILE_EDIT.",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "newPhone": {
+          "type": "string",
+          "description": "New member phone if PROFILE_EDIT.",
+          "minLength": 0,
+          "maxLength": 30
+        },
+        "newUsername": {
+          "type": "string",
+          "description": "New member username if PROFILE_EDIT.",
+          "minLength": 0,
+          "maxLength": 60
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "requestType",
+        "requestedBy",
+        "date",
+        "details",
+        "status",
+        "targetMemberId",
+        "mealType",
+        "isChecked",
+        "guestCount",
+        "shopperIds",
+        "items",
+        "amount",
+        "note",
+        "newName",
+        "newPhone",
+        "newUsername",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BazarRequisitionRecord": {
+      "title": "BazarRequisitionRecord",
+      "description": "Scheduled bazar shopping assignment with items to buy and budget for 1-click WhatsApp dispatch.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Workspace owner UID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "workspaceId": {
+          "type": "string",
+          "description": "Parent workspace ID (immutable).",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Assigned shopping date YYYY-MM-DD.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "shopperIds": {
+          "type": "array",
+          "description": "Bounded list (1..20) of assigned shopper member IDs."
+        },
+        "items": {
+          "type": "string",
+          "description": "Shopping list items to purchase.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "estimatedAmount": {
+          "type": "number",
+          "description": "Estimated budget or advance in BDT (0..1000000)."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional admin instruction note.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "status": {
+          "type": "string",
+          "description": "Requisition state; terminal once completed.",
+          "enum": ["scheduled", "completed"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "workspaceId",
+        "date",
+        "shopperIds",
+        "items",
+        "estimatedAmount",
+        "note",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "System-only administrator registry documents."
+    },
+    "/workspaces/{workspaceId}": {
+      "schema": { "$ref": "#/entities/Workspace" },
+      "description": "Root mess workspaces owned by authenticated Google users."
+    },
+    "/workspaces/{workspaceId}/members/{memberId}": {
+      "schema": { "$ref": "#/entities/MessMember" },
+      "description": "Mess members belonging to a workspace (PII phone & WhatsApp isolated to owner/admin)."
+    },
+    "/workspaces/{workspaceId}/mealEntries/{mealEntryId}": {
+      "schema": { "$ref": "#/entities/MealEntry" },
+      "description": "Daily meal entries per member within a workspace."
+    },
+    "/workspaces/{workspaceId}/bazarEntries/{bazarId}": {
+      "schema": { "$ref": "#/entities/BazarRecord" },
+      "description": "Grocery shopping entries within a workspace."
+    },
+    "/workspaces/{workspaceId}/bazarRequests/{bazarReqId}": {
+      "schema": { "$ref": "#/entities/BazarRequisitionRecord" },
+      "description": "Scheduled bazar shopping duty requests for WhatsApp dispatch."
+    },
+    "/workspaces/{workspaceId}/deposits/{depositId}": {
+      "schema": { "$ref": "#/entities/DepositRecord" },
+      "description": "Member deposit entries within a workspace."
+    },
+    "/workspaces/{workspaceId}/fines/{fineId}": {
+      "schema": { "$ref": "#/entities/FineRecord" },
+      "description": "Member fine entries within a workspace."
+    },
+    "/workspaces/{workspaceId}/pendingRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/PendingRequestRecord" },
+      "description": "Pending approval requests within a workspace."
+    }
+  }
+}

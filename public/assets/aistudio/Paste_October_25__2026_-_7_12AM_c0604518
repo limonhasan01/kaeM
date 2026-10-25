@@ -1,0 +1,1650 @@
+```html
+<!DOCTYPE html>
+<html lang="bn" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ব্যাচেলর মেস ও মিল ম্যানেজার</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Hind Siliguri for Bangla) -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for Graphical Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Hind Siliguri', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Toggle Switch UI */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #6366f1;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col justify-between overflow-x-hidden selection:bg-brand-500 selection:text-white pb-20 md:pb-0">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 px-4 py-3 flex items-center justify-between shadow-md">
+        <div class="flex items-center space-x-3 space-x-reverse">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-400 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-brand-500/20">
+                <i class="fa-solid fa-utensils"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-white leading-tight">মেস ম্যানেজার</h1>
+                <p id="currentMonthYear" class="text-xs text-slate-400">স্মার্ট ব্যাচেলর মেস সমাধান</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Pending Requests Counter for Admin/User -->
+            <button onclick="switchTab('pending-requests')" id="headerPendingBtn" class="relative p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition border border-slate-700">
+                <i class="fa-solid fa-bell text-amber-400"></i>
+                <span id="pendingBadge" class="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden">0</span>
+            </button>
+            
+            <!-- User Login / Switch Button -->
+            <button onclick="openUserSwitchModal()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-200 transition">
+                <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span id="headerUserLabel">লগইন</span>
+                <i class="fa-solid fa-chevron-down text-slate-400 text-[10px]"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Global Toast Alerts -->
+    <div id="toastContainer" class="fixed top-16 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-4 space-y-5">
+        
+        <!-- Summary Dashboard Header -->
+        <section id="dashboardSummary" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>মোট মিল</span>
+                    <i class="fa-solid fa-bowl-rice text-brand-500"></i>
+                </div>
+                <div class="text-xl font-bold text-white" id="statTotalMeals">0</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">গেস্ট মিল সহ</div>
+            </div>
+
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>মোট জমা</span>
+                    <i class="fa-solid fa-wallet text-emerald-400"></i>
+                </div>
+                <div class="text-xl font-bold text-emerald-400" id="statTotalDeposit">৳ 0</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">সব মেম্বারের ক্যাশ জমা</div>
+            </div>
+
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>বাজার খরচ</span>
+                    <i class="fa-solid fa-cart-shopping text-amber-400"></i>
+                </div>
+                <div class="text-xl font-bold text-amber-400" id="statTotalBazar">৳ 0</div>
+                <div class="text-[11px] text-slate-400 mt-0.5" id="statBazarBalance">অবশিষ্ট: ৳ 0</div>
+            </div>
+
+            <div class="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl shadow-sm">
+                <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+                    <span>বর্তমান মিল রেট</span>
+                    <i class="fa-solid fa-chart-line text-rose-400"></i>
+                </div>
+                <div class="text-xl font-bold text-rose-400" id="statMealRate">৳ 0.00</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">প্রতি মিলের আনুমানিক খরচ</div>
+            </div>
+        </section>
+
+        <!-- Main Desktop Navigation Bar -->
+        <nav class="flex overflow-x-auto hide-scrollbar gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800/80 text-xs font-semibold">
+            <button onclick="switchTab('meals')" id="tab-btn-meals" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 bg-brand-600 text-white shadow">
+                <i class="fa-solid fa-calendar-days mr-1.5"></i>দৈনিক মিল ও গেস্ট
+            </button>
+            <button onclick="switchTab('bazar')" id="tab-btn-bazar" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-shopping-basket mr-1.5"></i>যৌথ বাজার খাতা
+            </button>
+            <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-chart-pie mr-1.5"></i>গ্রাফিক্যাল অ্যানালিটিক্স
+            </button>
+            <button onclick="switchTab('deposits')" id="tab-btn-deposits" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-money-bill-wave mr-1.5"></i>জমা ও ব্যালেন্স
+            </button>
+            <button onclick="switchTab('pending-requests')" id="tab-btn-pending-requests" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800 relative">
+                <i class="fa-solid fa-clock-rotate-left mr-1.5"></i>পেন্ডিং রিকোয়েস্ট
+                <span id="tabBadge" class="ml-1 bg-amber-500 text-slate-950 font-bold px-1.5 py-0.5 rounded-full text-[10px]">0</span>
+            </button>
+            <button onclick="switchTab('members')" id="tab-btn-members" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-users mr-1.5"></i>মেম্বার
+            </button>
+            <button onclick="switchTab('utilities')" id="tab-btn-utilities" class="nav-btn px-4 py-2 rounded-lg transition shrink-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+                <i class="fa-solid fa-receipt mr-1.5"></i>ইউটিলিটি ও রাঁধুনী
+            </button>
+        </nav>
+
+        <!-- TAB CONTENT 1: MEALS SWITCH & GUEST MEAL PER MEMBER -->
+        <section id="tab-meals" class="tab-content space-y-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-utensils text-brand-500"></i>দৈনিক ৩ বেলা মিল ও গেস্ট সুইচার
+                        </h2>
+                        <p class="text-xs text-slate-400">প্রতিটি মেম্বারের অন/অফ সুইচ এবং নিজস্ব গেস্ট মিল যুক্ত করুন</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs text-slate-400">তারিখ:</label>
+                        <input type="date" id="mealDatePicker" onchange="renderMealMatrix()" class="bg-slate-800 border border-slate-700 text-white rounded-lg px-2.5 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- 3 Meal + Guest Input Cards / List -->
+                <div id="mealCardsContainer" class="space-y-3">
+                    <!-- Dynamic Member Meal Switch Rows -->
+                </div>
+            </div>
+
+            <!-- Total Month Meal Summary Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                <h3 class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-emerald-400"></i>মেম্বারভিত্তিক মোট মিলের অবস্থা
+                </h3>
+                <div id="monthlyMealSummary" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <!-- Dynamic Summary Cards -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT 2: MULTI-MEMBER JOINT BAZAR TRACKER -->
+        <section id="tab-bazar" class="tab-content space-y-4 hidden">
+            <div class="flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div>
+                    <h2 class="text-base font-bold text-white">যৌথ বাজার খাতা ও বাজার কাউন্টার</h2>
+                    <p class="text-xs text-slate-400">একসাথে একাধিক মেম্বারের বাজারে যাওয়া এবং কার কয়টি বাজার সম্পন্ন হয়েছে</p>
+                </div>
+                <button onclick="openAddBazarModal()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i> যৌথ বাজার যুক্ত করুন
+                </button>
+            </div>
+
+            <!-- Shopping Count Tracker Cards -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">মেম্বারদের বাজার দেওয়ার সংখ্যা (Trip Counter)</h3>
+                <div id="bazarTripsContainer" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <!-- Dynamic Trip Count Cards -->
+                </div>
+            </div>
+
+            <!-- Bazar History Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-800/80 text-slate-300 border-b border-slate-700 font-semibold">
+                            <tr>
+                                <th class="p-3">তারিখ</th>
+                                <th class="p-3">বাজারকারী (মেম্বারবৃন্দ)</th>
+                                <th class="p-3">আইটেম সমুহ</th>
+                                <th class="p-3 text-right">মোট টাকা (৳)</th>
+                                <th class="p-3 text-center">স্ট্যাটাস</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bazarTableBody" class="divide-y divide-slate-800 bg-slate-900">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT 3: GRAPHICAL ANALYTICS & FINANCIAL BALANCE HEALTH -->
+        <section id="tab-analytics" class="tab-content space-y-4 hidden">
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-brand-400"></i>মেসের গ্রাফিক্যাল অ্যানালিটিক্স
+                </h2>
+                <p class="text-xs text-slate-400">মেম্বারদের দেওয়া টাকা বনাম মিল খরচের দৃশ্যমান তুলনামূলক চিত্র</p>
+            </div>
+
+            <!-- Chart.js Graph View -->
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm">
+                <div class="h-64 sm:h-80 relative">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Detailed Balance Health Recommendations (কমে দিল / বেশি দিল) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-heart-pulse text-rose-400"></i>মেম্বারদের টাকা জমা দেওয়ার স্বাস্থ্যগত অবস্থা (Health Status)
+                </h3>
+                <div id="financialHealthList" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <!-- Dynamic Health Cards -->
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT 4: DEPOSITS & CASH OVERVIEW -->
+        <section id="tab-deposits" class="tab-content space-y-4 hidden">
+            <div class="flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div>
+                    <h2 class="text-base font-bold text-white">মেস ডিপোজিট খাতা</h2>
+                    <p class="text-xs text-slate-400">মেম্বারদের টাকা জমার হিসাব</p>
+                </div>
+                <button onclick="openAddDepositModal()" class="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl transition shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-wallet"></i> টাকা জমা এন্ট্রি
+                </button>
+            </div>
+
+            <div id="memberBalanceCards" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <!-- Dynamic Content -->
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                <div class="p-3 border-b border-slate-800 font-semibold text-xs text-slate-200">
+                    জমা দেওয়ার সাম্প্রতিক ইতিহাস
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-800/80 text-slate-400">
+                            <tr>
+                                <th class="p-3">তারিখ</th>
+                                <th class="p-3">মেম্বার</th>
+                                <th class="p-3">মেথড / নোট</th>
+                                <th class="p-3 text-right">পরিমাণ (৳)</th>
+                                <th class="p-3 text-center">অবস্থা</th>
+                            </tr>
+                        </thead>
+                        <tbody id="depositTableBody" class="divide-y divide-slate-800">
+                            <!-- Dynamic Content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB CONTENT 5: PENDING REQUESTS (ADMIN APPROVAL QUEUE) -->
+        <section id="tab-pending-requests" class="tab-content space-y-4 hidden">
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-shield-halved text-amber-400"></i>অ্যাডমিন অ্যাপ্রুভাল প্যানেল
+                        </h2>
+                        <p class="text-xs text-slate-400">মেম্বারদের পাঠানো অন/অফ, বাজার, ও প্রোফাইল পরিবর্তন রিকোয়েস্ট</p>
+                    </div>
+                    <span id="pendingQueueCount" class="bg-amber-500/20 text-amber-300 text-xs px-2.5 py-1 rounded-full font-bold border border-amber-500/30">
+                        ০ টি পেন্ডিং
+                    </span>
+                </div>
+            </div>
+
+            <div id="pendingRequestsList" class="space-y-3">
+                <!-- Dynamic Pending Request Items -->
+            </div>
+        </section>
+
+        <!-- TAB CONTENT 6: MEMBERS DIRECTORY -->
+        <section id="tab-members" class="tab-content space-y-4 hidden">
+            <div class="flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+                <div>
+                    <h2 class="text-base font-bold text-white">মেম্বারদের তালিকা</h2>
+                    <p class="text-xs text-slate-400">মেসের সব সক্রিয় সদস্য</p>
+                </div>
+                <button id="adminAddMemberBtn" onclick="openAddMemberModal()" class="hidden px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition shadow flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-plus"></i> নতুন মেম্বার যোগ করুন
+                </button>
+            </div>
+
+            <div id="membersListGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <!-- Dynamic Member Cards -->
+            </div>
+        </section>
+
+        <!-- TAB CONTENT 7: UTILITIES, PENALTIES & DUTY SPINNER -->
+        <section id="tab-utilities" class="tab-content space-y-4 hidden">
+            <!-- Cooking Duty Spinner Wheel -->
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-3">
+                <h2 class="text-base font-bold text-white flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-kitchen-set text-amber-400"></i>আজকের রাঁধুনী ও বাজার নির্বাচন (Duty Selector)
+                </h2>
+                <p class="text-xs text-slate-400">আজকে কে রান্না বা বাজার করবে তা সহজে লটারি করুন</p>
+                <div class="py-2">
+                    <div id="spinnedResult" class="text-lg font-bold text-brand-300 bg-brand-500/10 p-3 rounded-xl border border-brand-500/20 max-w-xs mx-auto">
+                        বাটন চাপুন
+                    </div>
+                </div>
+                <button onclick="spinDuty()" class="px-5 py-2 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    <i class="fa-solid fa-dice mr-1"></i> রাঁধুনী বেছে নিন
+                </button>
+            </div>
+
+            <!-- Fine & Penalty Section -->
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-base font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-gavel text-rose-400"></i>জরিমানা খাতা (Fine Ledger)
+                        </h2>
+                        <p class="text-xs text-slate-400">নিয়ম ভঙ্গের জরিমানা ধারা ও হিসাব</p>
+                    </div>
+                    <button onclick="openFineModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs rounded-lg font-semibold transition">
+                        + জরিমানা যুক্ত করুন
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400">
+                            <tr>
+                                <th class="p-2.5">তারিখ</th>
+                                <th class="p-2.5">মেম্বার</th>
+                                <th class="p-2.5">কারণ</th>
+                                <th class="p-2.5 text-right">জরিমানা (৳)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fineTableBody" class="divide-y divide-slate-800">
+                            <!-- Dynamic Fine List -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Utility Calculator Splitter -->
+            <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-calculator text-cyan-400"></i>ইউটিলিটি ও বাসা ভাড়া সমান বণ্টন
+                </h3>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                        <label class="text-slate-400">বাসা ভাড়া</label>
+                        <input type="number" id="utilRent" value="12000" oninput="calculateUtilities()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 mt-1">
+                    </div>
+                    <div>
+                        <label class="text-slate-400">বিদ্যুৎ বিল</label>
+                        <input type="number" id="utilElectric" value="1500" oninput="calculateUtilities()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 mt-1">
+                    </div>
+                    <div>
+                        <label class="text-slate-400">গ্যাস সিলিন্ডার</label>
+                        <input type="number" id="utilGas" value="1000" oninput="calculateUtilities()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 mt-1">
+                    </div>
+                    <div>
+                        <label class="text-slate-400">ওয়াইফাই ও বুয়া</label>
+                        <input type="number" id="utilOther" value="2500" oninput="calculateUtilities()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 mt-1">
+                    </div>
+                </div>
+
+                <div id="utilityResultBox" class="p-3 bg-slate-800/80 rounded-xl border border-slate-700 flex justify-between items-center text-xs">
+                    <span class="text-slate-300">প্রতিজনের শেয়ার:</span>
+                    <span class="text-sm font-bold text-emerald-400" id="utilPerMember">৳ 0</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MOBILE STICKY BOTTOM NAVIGATION BAR -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-40 px-2 py-2 flex justify-around items-center">
+        <button onclick="switchTab('meals')" id="mob-tab-meals" class="flex flex-col items-center gap-1 text-brand-400 text-[10px] font-medium">
+            <i class="fa-solid fa-calendar-days text-base"></i>
+            <span>মিল</span>
+        </button>
+        <button onclick="switchTab('bazar')" id="mob-tab-bazar" class="flex flex-col items-center gap-1 text-slate-400 text-[10px] font-medium">
+            <i class="fa-solid fa-shopping-basket text-base"></i>
+            <span>বাজার</span>
+        </button>
+        <button onclick="switchTab('analytics')" id="mob-tab-analytics" class="flex flex-col items-center gap-1 text-slate-400 text-[10px] font-medium">
+            <i class="fa-solid fa-chart-pie text-base"></i>
+            <span>অ্যানালিটিক্স</span>
+        </button>
+        <button onclick="switchTab('deposits')" id="mob-tab-deposits" class="flex flex-col items-center gap-1 text-slate-400 text-[10px] font-medium">
+            <i class="fa-solid fa-wallet text-base"></i>
+            <span>জমা</span>
+        </button>
+        <button onclick="switchTab('pending-requests')" id="mob-tab-pending-requests" class="flex flex-col items-center gap-1 text-slate-400 text-[10px] font-medium relative">
+            <i class="fa-solid fa-bell text-base"></i>
+            <span>রিকোয়েস্ট</span>
+            <span id="mobPendingBadge" class="absolute -top-1 right-2 bg-amber-500 text-slate-950 font-bold w-4 h-4 rounded-full text-[9px] flex items-center justify-center hidden">0</span>
+        </button>
+    </nav>
+
+    <!-- MODAL 1: USER LOGIN / SWITCH MODAL -->
+    <div id="userSwitchModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">ইউজার লগইন নির্বাচন</h3>
+                <button onclick="closeModal('userSwitchModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <div class="space-y-3">
+                <label class="text-xs text-slate-400">অ্যাকোউন্ট নির্বাচন করুন:</label>
+                <select id="userSelectDropdown" onchange="toggleAdminPassField()" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+                    <!-- Dynamic Account Options -->
+                </select>
+
+                <div id="adminPassContainer" class="space-y-1 hidden">
+                    <label class="text-xs text-slate-400">অ্যাডমিন সিকিউরিটি পিন:</label>
+                    <input type="password" id="adminPassInput" placeholder="পাসওয়ার্ড লিখুন" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-brand-500 outline-none">
+                </div>
+
+                <button onclick="performLogin()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs rounded-xl transition shadow-md">
+                    প্রবেশ করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PROFILE EDIT MODAL -->
+    <div id="profileEditModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">প্রোফাইল তথ্য এডিট</h3>
+                <button onclick="closeModal('profileEditModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="submitProfileEditRequest(event)" class="space-y-3">
+                <input type="hidden" id="editProfileMemberId">
+                <div>
+                    <label class="text-xs text-slate-400">নাম</label>
+                    <input type="text" id="editProfileName" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs mt-1" required>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">ফোন নম্বর</label>
+                    <input type="text" id="editProfilePhone" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs mt-1" required>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400">ইউজারনেম</label>
+                    <input type="text" id="editProfileUsername" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 text-xs mt-1" required>
+                </div>
+                <div class="p-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-300">
+                    মেম্বারদের অনুরোধ এডমিন অ্যাপ্রুভ করলে আপডেট হবে।
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs rounded-xl transition">
+                    আপডেট জমা দিন
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: JOINT MULTI-MEMBER BAZAR ENTRY MODAL -->
+    <div id="addBazarModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">যৌথ বাজার এন্ট্রি</h3>
+                <button onclick="closeModal('addBazarModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="submitBazarEntry(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="text-slate-400">তারিখ</label>
+                    <input type="date" id="bazarDate" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400 mb-1 block">বাজারে অংশগ্রহণকারী মেম্বারবৃন্দ (একাধিক নির্বাচন করুন):</label>
+                    <div id="bazarShoppersCheckboxes" class="bg-slate-800/80 border border-slate-700 rounded-xl p-2.5 max-h-32 overflow-y-auto space-y-2">
+                        <!-- Dynamic Checkboxes -->
+                    </div>
+                </div>
+                <div>
+                    <label class="text-slate-400">বাজারের বিবরণ/আইটেম</label>
+                    <input type="text" id="bazarItems" placeholder="চাল, মুরগি, তেল, পেঁয়াজ" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400">মোট খরচ (টাকা)</label>
+                    <input type="number" id="bazarAmount" placeholder="1500" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition">
+                    বাজার জমা দিন
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: DEPOSIT ENTRY MODAL -->
+    <div id="addDepositModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">টাকা জমা এন্ট্রি</h3>
+                <button onclick="closeModal('addDepositModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="submitDepositEntry(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="text-slate-400">তারিখ</label>
+                    <input type="date" id="depositDate" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400">মেম্বার</label>
+                    <select id="depositMemberSelect" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1">
+                        <!-- Dynamic Options -->
+                    </select>
+                </div>
+                <div>
+                    <label class="text-slate-400">জমার পরিমাণ (৳)</label>
+                    <input type="number" id="depositAmount" placeholder="2000" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400">মেথড / নোট</label>
+                    <input type="text" id="depositNote" placeholder="বিকাশ / ক্যাশ জমা" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition">
+                    জমা জমা দিন
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: ADMIN ADD MEMBER MODAL -->
+    <div id="addMemberModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">নতুন মেম্বার যুক্ত করুন</h3>
+                <button onclick="closeModal('addMemberModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="handleAddMemberSubmit(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="text-slate-400">নাম</label>
+                    <input type="text" id="newMemName" placeholder="মেম্বারের নাম" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400">ইউজারনেম</label>
+                    <input type="text" id="newMemUsername" placeholder="limon" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400">ফোন নম্বর</label>
+                    <input type="text" id="newMemPhone" placeholder="01700000000" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition">
+                    মেম্বার তৈরি করুন
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: ADD FINE MODAL (ADMIN) -->
+    <div id="fineModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl p-5 space-y-4 shadow-xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">জরিমানা যুক্ত করুন</h3>
+                <button onclick="closeModal('fineModal')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form onsubmit="submitFineEntry(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="text-slate-400">মেম্বার</label>
+                    <select id="fineMemberSelect" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1">
+                        <!-- Dynamic -->
+                    </select>
+                </div>
+                <div>
+                    <label class="text-slate-400">কারণ</label>
+                    <input type="text" id="fineReason" placeholder="ফ্যানের সুইচ অন রাখা" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <div>
+                    <label class="text-slate-400">পরিমাণ (৳)</label>
+                    <input type="number" id="fineAmount" placeholder="50" class="w-full bg-slate-800 border border-slate-700 text-white rounded-xl p-2.5 mt-1" required>
+                </div>
+                <button type="submit" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-xl transition">
+                    জরিমানা এন্ট্রি দিন
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CORE JAVASCRIPT APPLICATION LOGIC -->
+    <script>
+        // STRICT SEPARATION: Admin is totally separate from Members list
+        const ADMIN_USER = { id: 'admin_sys', name: 'মেস এডমিন', username: 'admin', isAdmin: true };
+
+        // INITIAL MEMBERS: Limon, Sujoy, Zisman
+        const DEFAULT_MEMBERS = [
+            { id: 'm1', name: 'Limon', phone: '01711112222', username: 'limon', isAdmin: false },
+            { id: 'm2', name: 'Sujoy', phone: '01833334444', username: 'sujoy', isAdmin: false },
+            { id: 'm3', name: 'Zisman', phone: '01955556666', username: 'zisman', isAdmin: false }
+        ];
+
+        const TODAY_STR = new Date().toISOString().split('T')[0];
+
+        // GLOBAL APPLICATION STATE
+        let state = {
+            currentUser: null,
+            members: JSON.parse(localStorage.getItem('bachelor_members_v2')) || DEFAULT_MEMBERS,
+            // meals structure: { "YYYY-MM-DD": { "m1": { breakfast: 0.5, lunch: 1, dinner: 1, guest: 0 }, ... } }
+            meals: JSON.parse(localStorage.getItem('bachelor_meals_v2')) || {
+                [TODAY_STR]: {
+                    'm1': { breakfast: 0.5, lunch: 1, dinner: 1, guest: 1 },
+                    'm2': { breakfast: 0, lunch: 1, dinner: 1, guest: 0 },
+                    'm3': { breakfast: 0.5, lunch: 0, dinner: 1, guest: 0 }
+                }
+            },
+            // bazar structure: [ { id, date, shopperIds: ['m1', 'm2'], items, amount, status } ]
+            bazar: JSON.parse(localStorage.getItem('bachelor_bazar_v2')) || [
+                { id: 'b1', date: TODAY_STR, shopperIds: ['m1', 'm2'], items: 'চাল, সয়াবিন তেল, ডিম', amount: 1200, status: 'approved' }
+            ],
+            deposits: JSON.parse(localStorage.getItem('bachelor_deposits_v2')) || [
+                { id: 'd1', date: TODAY_STR, memberId: 'm1', amount: 3000, note: 'বিকাশ', status: 'approved' },
+                { id: 'd2', date: TODAY_STR, memberId: 'm2', amount: 2500, note: 'ক্যাশ', status: 'approved' },
+                { id: 'd3', date: TODAY_STR, memberId: 'm3', amount: 2000, note: 'ক্যাশ', status: 'approved' }
+            ],
+            pendingRequests: JSON.parse(localStorage.getItem('bachelor_pending_v2')) || [],
+            fines: JSON.parse(localStorage.getItem('bachelor_fines_v2')) || []
+        };
+
+        let chartInstance = null;
+
+        // SAVE STATE TO STORAGE
+        function saveData() {
+            localStorage.setItem('bachelor_members_v2', JSON.stringify(state.members));
+            localStorage.setItem('bachelor_meals_v2', JSON.stringify(state.meals));
+            localStorage.setItem('bachelor_bazar_v2', JSON.stringify(state.bazar));
+            localStorage.setItem('bachelor_deposits_v2', JSON.stringify(state.deposits));
+            localStorage.setItem('bachelor_pending_v2', JSON.stringify(state.pendingRequests));
+            localStorage.setItem('bachelor_fines_v2', JSON.stringify(state.fines));
+            renderAll();
+        }
+
+        // INIT LOAD
+        window.onload = function() {
+            // Default active session: Limon
+            state.currentUser = state.members[0];
+            document.getElementById('mealDatePicker').value = TODAY_STR;
+            calculateUtilities();
+            renderAll();
+        };
+
+        // RENDER ALL COMPONENTS
+        function renderAll() {
+            updateHeaderUI();
+            renderMealMatrix();
+            renderMonthlyMealSummary();
+            renderBazarTracker();
+            renderDepositTable();
+            renderMembersList();
+            renderPendingRequests();
+            renderFines();
+            renderAnalyticsChart();
+            updateCalculatedStats();
+        }
+
+        // HEADER & USER ACCOUNT SWITCHING
+        function updateHeaderUI() {
+            const userLabel = document.getElementById('headerUserLabel');
+            if (state.currentUser) {
+                userLabel.innerText = `${state.currentUser.name} (${state.currentUser.isAdmin ? 'Admin' : 'Member'})`;
+            } else {
+                userLabel.innerText = 'লগইন';
+            }
+
+            const adminAddBtn = document.getElementById('adminAddMemberBtn');
+            if (state.currentUser && state.currentUser.isAdmin) {
+                adminAddBtn.classList.remove('hidden');
+            } else {
+                adminAddBtn.classList.add('hidden');
+            }
+
+            // Badges
+            const count = state.pendingRequests.length;
+            const badge = document.getElementById('pendingBadge');
+            const tabBadge = document.getElementById('tabBadge');
+            const mobBadge = document.getElementById('mobPendingBadge');
+            const queueCount = document.getElementById('pendingQueueCount');
+
+            if (count > 0) {
+                badge.innerText = count;
+                badge.classList.remove('hidden');
+                tabBadge.innerText = count;
+                mobBadge.innerText = count;
+                mobBadge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+                tabBadge.innerText = '0';
+                mobBadge.classList.add('hidden');
+            }
+            if (queueCount) queueCount.innerText = `${count} টি পেন্ডিং`;
+        }
+
+        function openUserSwitchModal() {
+            const select = document.getElementById('userSelectDropdown');
+            select.innerHTML = `
+                <option value="${ADMIN_USER.id}">👑 মেস এডমিন (Admin System)</option>
+                ${state.members.map(m => `<option value="${m.id}">👤 ${m.name}</option>`).join('')}
+            `;
+
+            if (state.currentUser) {
+                select.value = state.currentUser.id;
+            }
+
+            toggleAdminPassField();
+            document.getElementById('userSwitchModal').classList.remove('hidden');
+        }
+
+        function toggleAdminPassField() {
+            const val = document.getElementById('userSelectDropdown').value;
+            const container = document.getElementById('adminPassContainer');
+            if (val === ADMIN_USER.id) {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function performLogin() {
+            const selectId = document.getElementById('userSelectDropdown').value;
+
+            if (selectId === ADMIN_USER.id) {
+                const passInput = document.getElementById('adminPassInput').value;
+                // SECURE CHECK: Secret Admin Pass is 1234
+                if (passInput !== '1234') {
+                    showToast('ভুল এডমিন পাসওয়ার্ড!', 'error');
+                    return;
+                }
+                state.currentUser = ADMIN_USER;
+            } else {
+                const targetMem = state.members.find(m => m.id === selectId);
+                if (targetMem) state.currentUser = targetMem;
+            }
+
+            showToast(`স্বাগতম, ${state.currentUser.name}!`);
+            closeModal('userSwitchModal');
+            document.getElementById('adminPassInput').value = '';
+            renderAll();
+        }
+
+        // TAB SWITCHING LOGIC
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('bg-brand-600', 'text-white', 'shadow');
+                el.classList.add('text-slate-400');
+            });
+
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            if (activeTab) activeTab.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-brand-600', 'text-white', 'shadow');
+                activeBtn.classList.remove('text-slate-400');
+            }
+
+            if (tabId === 'analytics') {
+                setTimeout(renderAnalyticsChart, 50);
+            }
+        }
+
+        // STATS COMPUTATION
+        function updateCalculatedStats() {
+            let totalMeals = 0;
+            Object.values(state.meals).forEach(day => {
+                Object.values(day).forEach(m => {
+                    totalMeals += (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0) + (Number(m.guest) || 0);
+                });
+            });
+
+            const totalBazar = state.bazar
+                .filter(b => b.status === 'approved')
+                .reduce((sum, b) => sum + Number(b.amount), 0);
+
+            const totalDeposit = state.deposits
+                .filter(d => d.status === 'approved')
+                .reduce((sum, d) => sum + Number(d.amount), 0);
+
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+            const balance = totalDeposit - totalBazar;
+
+            document.getElementById('statTotalMeals').innerText = totalMeals.toFixed(1);
+            document.getElementById('statTotalBazar').innerText = `৳ ${totalBazar.toLocaleString()}`;
+            document.getElementById('statTotalDeposit').innerText = `৳ ${totalDeposit.toLocaleString()}`;
+            document.getElementById('statMealRate').innerText = `৳ ${mealRate.toFixed(2)}`;
+            document.getElementById('statBazarBalance').innerText = `অবশিষ্ট: ৳ ${balance.toLocaleString()}`;
+        }
+
+        // 3-MEAL TOGGLE + GUEST INPUT PER MEMBER
+        function renderMealMatrix() {
+            const date = document.getElementById('mealDatePicker').value || TODAY_STR;
+            const container = document.getElementById('mealCardsContainer');
+
+            if (!state.meals[date]) {
+                state.meals[date] = {};
+                state.members.forEach(m => {
+                    state.meals[date][m.id] = { breakfast: 0, lunch: 0, dinner: 0, guest: 0 };
+                });
+            }
+
+            container.innerHTML = state.members.map(m => {
+                const userMeals = state.meals[date][m.id] || { breakfast: 0, lunch: 0, dinner: 0, guest: 0 };
+                const dayTotal = (userMeals.breakfast || 0) + (userMeals.lunch || 0) + (userMeals.dinner || 0) + (Number(userMeals.guest) || 0);
+
+                const isSelfOrAdmin = state.currentUser && (state.currentUser.isAdmin || state.currentUser.id === m.id);
+
+                return `
+                    <div class="bg-slate-800/60 border border-slate-700/60 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-brand-600/20 border border-brand-500/30 flex items-center justify-center font-bold text-brand-300">
+                                ${m.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white text-sm">${m.name}</h4>
+                                <div class="text-[11px] text-brand-400 font-semibold">আজকের মোট: ${dayTotal.toFixed(1)} মিল</div>
+                            </div>
+                        </div>
+
+                        <!-- 3 Meal Switches & Guest Input -->
+                        <div class="flex flex-wrap items-center gap-3 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800">
+                            <!-- Breakfast Toggle -->
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <span class="text-xs text-slate-300">সকাল</span>
+                                <input type="checkbox" ${userMeals.breakfast ? 'checked' : ''} ${!isSelfOrAdmin ? 'disabled' : ''}
+                                    onchange="handleMealToggle('${date}', '${m.id}', 'breakfast', this.checked)"
+                                    class="w-4 h-4 text-brand-600 bg-slate-800 border-slate-700 rounded accent-indigo-600">
+                            </label>
+
+                            <!-- Lunch Toggle -->
+                            <label class="flex items-center gap-1.5 cursor-pointer border-l border-slate-800 pl-3">
+                                <span class="text-xs text-slate-300">দুপুর</span>
+                                <input type="checkbox" ${userMeals.lunch ? 'checked' : ''} ${!isSelfOrAdmin ? 'disabled' : ''}
+                                    onchange="handleMealToggle('${date}', '${m.id}', 'lunch', this.checked)"
+                                    class="w-4 h-4 text-brand-600 bg-slate-800 border-slate-700 rounded accent-indigo-600">
+                            </label>
+
+                            <!-- Dinner Toggle -->
+                            <label class="flex items-center gap-1.5 cursor-pointer border-l border-slate-800 pl-3">
+                                <span class="text-xs text-slate-300">রাত</span>
+                                <input type="checkbox" ${userMeals.dinner ? 'checked' : ''} ${!isSelfOrAdmin ? 'disabled' : ''}
+                                    onchange="handleMealToggle('${date}', '${m.id}', 'dinner', this.checked)"
+                                    class="w-4 h-4 text-brand-600 bg-slate-800 border-slate-700 rounded accent-indigo-600">
+                            </label>
+
+                            <!-- Guest Meal Input Field -->
+                            <div class="flex items-center gap-1 border-l border-slate-800 pl-3">
+                                <span class="text-xs text-amber-400 font-medium">+গেস্ট:</span>
+                                <input type="number" step="0.5" min="0" value="${userMeals.guest || 0}" ${!isSelfOrAdmin ? 'disabled' : ''}
+                                    onchange="handleGuestMealUpdate('${date}', '${m.id}', this.value)"
+                                    class="w-12 bg-slate-800 border border-slate-700 text-white rounded px-1.5 py-0.5 text-xs text-center focus:ring-1 focus:ring-brand-500">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // HANDLE MEAL SWITCH UPDATE
+        function handleMealToggle(date, memberId, mealType, isChecked) {
+            const member = state.members.find(m => m.id === memberId);
+
+            if (state.currentUser.isAdmin) {
+                if (!state.meals[date]) state.meals[date] = {};
+                if (!state.meals[date][memberId]) state.meals[date][memberId] = { breakfast: 0, lunch: 0, dinner: 0, guest: 0 };
+
+                let val = 0;
+                if (isChecked) val = (mealType === 'breakfast') ? 0.5 : 1.0;
+                state.meals[date][memberId][mealType] = val;
+                saveData();
+                showToast(`এডমিন আপডেট করেছেন: ${member.name}`);
+            } else {
+                const req = {
+                    id: 'req_' + Date.now(),
+                    type: 'MEAL_CHANGE',
+                    requestedBy: state.currentUser.name,
+                    date: date,
+                    dataPayload: { memberId, mealType, isChecked, date },
+                    details: `${date} তারিখে ${member.name}-এর ${mealType === 'breakfast' ? 'সকাল' : mealType === 'lunch' ? 'দুপুর' : 'রাত'} মিল ${isChecked ? 'অন' : 'অফ'} করার আবেদন`
+                };
+                state.pendingRequests.push(req);
+                saveData();
+                showToast('অনুরোধ এডমিনের কাছে পাঠানো হয়েছে');
+            }
+        }
+
+        // HANDLE GUEST MEAL UPDATE PER MEMBER
+        function handleGuestMealUpdate(date, memberId, countVal) {
+            const member = state.members.find(m => m.id === memberId);
+            const count = Number(countVal) || 0;
+
+            if (state.currentUser.isAdmin) {
+                if (!state.meals[date]) state.meals[date] = {};
+                if (!state.meals[date][memberId]) state.meals[date][memberId] = { breakfast: 0, lunch: 0, dinner: 0, guest: 0 };
+                state.meals[date][memberId].guest = count;
+                saveData();
+                showToast(`গেস্ট মিল আপডেট হয়েছে (${member.name})`);
+            } else {
+                const req = {
+                    id: 'req_' + Date.now(),
+                    type: 'GUEST_MEAL',
+                    requestedBy: state.currentUser.name,
+                    date: date,
+                    dataPayload: { memberId, date, count },
+                    details: `${date} তারিখে ${member.name}-এর জন্য ${count} টি গেস্ট মিল যুক্ত করার আবেদন`
+                };
+                state.pendingRequests.push(req);
+                saveData();
+                showToast('গেস্ট মিলের আবেদন এডমিনের কাছে পাঠানো হয়েছে');
+            }
+        }
+
+        // MONTHLY MEAL SUMMARY
+        function renderMonthlyMealSummary() {
+            const summaryDiv = document.getElementById('monthlyMealSummary');
+            summaryDiv.innerHTML = state.members.map(m => {
+                let memberMeals = 0;
+                Object.values(state.meals).forEach(day => {
+                    if (day[m.id]) {
+                        memberMeals += (day[m.id].breakfast || 0) + (day[m.id].lunch || 0) + (day[m.id].dinner || 0) + (Number(day[m.id].guest) || 0);
+                    }
+                });
+
+                return `
+                    <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700/60 flex items-center justify-between">
+                        <div>
+                            <div class="font-semibold text-white text-xs">${m.name}</div>
+                            <div class="text-[11px] text-slate-400">গেস্ট সহ মোট মিল</div>
+                        </div>
+                        <div class="text-base font-bold text-brand-400 bg-brand-500/10 px-2.5 py-1 rounded-lg border border-brand-500/20">
+                            ${memberMeals.toFixed(1)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // JOINT BAZAR TRACKER & SHOPPING TRIP COUNTER
+        function renderBazarTracker() {
+            // Render Shopping Trip Count
+            const tripCounts = {};
+            state.members.forEach(m => tripCounts[m.id] = 0);
+
+            state.bazar.filter(b => b.status === 'approved').forEach(b => {
+                if (Array.isArray(b.shopperIds)) {
+                    b.shopperIds.forEach(sId => {
+                        if (tripCounts[sId] !== undefined) tripCounts[sId]++;
+                    });
+                } else if (b.memberId) {
+                    // Fallback for older structure
+                    if (tripCounts[b.memberId] !== undefined) tripCounts[b.memberId]++;
+                }
+            });
+
+            const tripsContainer = document.getElementById('bazarTripsContainer');
+            tripsContainer.innerHTML = state.members.map(m => `
+                <div class="bg-slate-800/70 p-3 rounded-xl border border-slate-700/70 flex items-center justify-between">
+                    <div>
+                        <div class="font-semibold text-white text-xs">${m.name}</div>
+                        <div class="text-[10px] text-slate-400">বাজার সম্পন্ন</div>
+                    </div>
+                    <div class="text-sm font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20">
+                        ${tripCounts[m.id] || 0} বার
+                    </div>
+                </div>
+            `).join('');
+
+            // Render History Table
+            const tbody = document.getElementById('bazarTableBody');
+            tbody.innerHTML = state.bazar.map(b => {
+                let shopperNames = '';
+                if (Array.isArray(b.shopperIds)) {
+                    shopperNames = b.shopperIds.map(id => {
+                        const m = state.members.find(mem => mem.id === id);
+                        return m ? m.name : '';
+                    }).filter(Boolean).join(', ');
+                } else {
+                    const m = state.members.find(mem => mem.id === b.memberId);
+                    shopperNames = m ? m.name : 'অজানা';
+                }
+
+                const isPending = b.status === 'pending';
+
+                return `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 text-slate-400 font-mono">${b.date}</td>
+                        <td class="p-3 font-medium text-white">${shopperNames}</td>
+                        <td class="p-3 text-slate-300">${b.items}</td>
+                        <td class="p-3 text-right font-bold text-amber-400">৳ ${b.amount}</td>
+                        <td class="p-3 text-center">
+                            ${isPending ? 
+                                `<span class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">পেন্ডিং</span>` :
+                                `<span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">অনুমোদিত</span>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAddBazarModal() {
+            const container = document.getElementById('bazarShoppersCheckboxes');
+            container.innerHTML = state.members.map(m => `
+                <label class="flex items-center gap-2 text-xs text-white cursor-pointer">
+                    <input type="checkbox" value="${m.id}" class="shopper-checkbox rounded text-brand-600 focus:ring-brand-500 bg-slate-900 border-slate-700">
+                    <span>${m.name}</span>
+                </label>
+            `).join('');
+
+            document.getElementById('bazarDate').value = TODAY_STR;
+            document.getElementById('addBazarModal').classList.remove('hidden');
+        }
+
+        function submitBazarEntry(e) {
+            e.preventDefault();
+            const date = document.getElementById('bazarDate').value;
+            const items = document.getElementById('bazarItems').value;
+            const amount = Number(document.getElementById('bazarAmount').value);
+
+            const selectedShopperIds = Array.from(document.querySelectorAll('.shopper-checkbox:checked')).map(cb => cb.value);
+
+            if (selectedShopperIds.length === 0) {
+                showToast('কমপক্ষে ১ জন মেম্বার নির্বাচন করুন', 'error');
+                return;
+            }
+
+            const shopperNames = selectedShopperIds.map(id => state.members.find(m => m.id === id)?.name).join(', ');
+
+            if (state.currentUser.isAdmin) {
+                state.bazar.push({ id: 'b_' + Date.now(), date, shopperIds: selectedShopperIds, items, amount, status: 'approved' });
+                showToast('যৌথ বাজার এন্ট্রি যুক্ত হয়েছে');
+            } else {
+                const req = {
+                    id: 'req_' + Date.now(),
+                    type: 'BAZAR_ENTRY',
+                    requestedBy: state.currentUser.name,
+                    date: date,
+                    dataPayload: { date, shopperIds: selectedShopperIds, items, amount },
+                    details: `${shopperNames}-এর ${date} তারিখে ৳${amount} টাকার যৌথ বাজার (${items})`
+                };
+                state.pendingRequests.push(req);
+                showToast('যৌথ বাজার খরচের আবেদন এডমিনের কাছে পাঠানো হয়েছে');
+            }
+
+            saveData();
+            closeModal('addBazarModal');
+        }
+
+        // GRAPHICAL ANALYTICS & FINANCIAL BALANCE HEALTH
+        function renderAnalyticsChart() {
+            const ctx = document.getElementById('balanceChart');
+            if (!ctx) return;
+
+            let totalMealsAll = 0;
+            Object.values(state.meals).forEach(day => {
+                Object.values(day).forEach(m => {
+                    totalMealsAll += (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0) + (Number(m.guest) || 0);
+                });
+            });
+            const totalBazarAll = state.bazar.filter(b => b.status === 'approved').reduce((s, b) => s + Number(b.amount), 0);
+            const mealRate = totalMealsAll > 0 ? (totalBazarAll / totalMealsAll) : 0;
+
+            const labels = [];
+            const depositsData = [];
+            const costsData = [];
+            const healthContainer = document.getElementById('financialHealthList');
+            let healthHTML = '';
+
+            state.members.forEach(m => {
+                labels.push(m.name);
+                const deposited = state.deposits
+                    .filter(d => d.memberId === m.id && d.status === 'approved')
+                    .reduce((s, d) => s + Number(d.amount), 0);
+
+                let memMeals = 0;
+                Object.values(state.meals).forEach(day => {
+                    if (day[m.id]) {
+                        memMeals += (day[m.id].breakfast || 0) + (day[m.id].lunch || 0) + (day[m.id].dinner || 0) + (Number(day[m.id].guest) || 0);
+                    }
+                });
+
+                const fines = state.fines.filter(f => f.memberId === m.id).reduce((s, f) => s + Number(f.amount), 0);
+                const mealCost = (memMeals * mealRate) + fines;
+                const netBalance = deposited - mealCost;
+
+                depositsData.push(deposited);
+                costsData.push(mealCost);
+
+                const isShort = netBalance < 0;
+
+                healthHTML += `
+                    <div class="bg-slate-800/80 p-3.5 rounded-2xl border ${isShort ? 'border-rose-500/40 bg-rose-500/5' : 'border-emerald-500/40 bg-emerald-500/5'} flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-bold text-white text-xs">${m.name}</span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isShort ? 'bg-rose-500/20 text-rose-300' : 'bg-emerald-500/20 text-emerald-300'}">
+                                    ${isShort ? 'টাকা দেওয়া লাগবে' : 'পর্যাপ্ত ব্যালেন্স'}
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-400">মিল খরচ + জরিমানা: ৳${mealCost.toFixed(0)}</p>
+                        </div>
+                        <div class="mt-2 text-xs font-semibold ${isShort ? 'text-rose-400' : 'text-emerald-400'}">
+                            ${isShort ? `ঘাটতি: ৳ ${Math.abs(netBalance).toFixed(0)}` : `উদ্বৃত্ত: ৳ ${netBalance.toFixed(0)}`}
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (healthContainer) healthContainer.innerHTML = healthHTML;
+
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'মোট জমা (৳)',
+                            data: depositsData,
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'আনুমানিক খরচ (৳)',
+                            data: costsData,
+                            backgroundColor: '#f43f5e',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { family: 'Hind Siliguri' } } }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                    }
+                }
+            });
+        }
+
+        // DEPOSITS LOGIC & CARDS
+        function renderDepositTable() {
+            const tbody = document.getElementById('depositTableBody');
+            tbody.innerHTML = state.deposits.map(d => {
+                const mem = state.members.find(m => m.id === d.memberId);
+                const isPending = d.status === 'pending';
+                return `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-3 text-slate-400 font-mono">${d.date}</td>
+                        <td class="p-3 font-medium text-white">${mem ? mem.name : 'অজানা'}</td>
+                        <td class="p-3 text-slate-300">${d.note}</td>
+                        <td class="p-3 text-right font-bold text-emerald-400">৳ ${d.amount}</td>
+                        <td class="p-3 text-center">
+                            ${isPending ? 
+                                `<span class="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30">পেন্ডিং</span>` :
+                                `<span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">অনুমোদিত</span>`
+                            }
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Deposit summary cards
+            let totalMealsAll = 0;
+            Object.values(state.meals).forEach(day => {
+                Object.values(day).forEach(m => {
+                    totalMealsAll += (m.breakfast || 0) + (m.lunch || 0) + (m.dinner || 0) + (Number(m.guest) || 0);
+                });
+            });
+            const totalBazarAll = state.bazar.filter(b => b.status === 'approved').reduce((s, b) => s + Number(b.amount), 0);
+            const mealRate = totalMealsAll > 0 ? (totalBazarAll / totalMealsAll) : 0;
+
+            const cardsDiv = document.getElementById('memberBalanceCards');
+            cardsDiv.innerHTML = state.members.map(m => {
+                const deposited = state.deposits
+                    .filter(d => d.memberId === m.id && d.status === 'approved')
+                    .reduce((s, d) => s + Number(d.amount), 0);
+
+                let memMeals = 0;
+                Object.values(state.meals).forEach(day => {
+                    if (day[m.id]) {
+                        memMeals += (day[m.id].breakfast || 0) + (day[m.id].lunch || 0) + (day[m.id].dinner || 0) + (Number(day[m.id].guest) || 0);
+                    }
+                });
+
+                const fines = state.fines.filter(f => f.memberId === m.id).reduce((s, f) => s + Number(f.amount), 0);
+                const mealCost = memMeals * mealRate;
+                const balance = deposited - mealCost - fines;
+
+                return `
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-user text-brand-400"></i> ${m.name}
+                            </h4>
+                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                                Member
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-800">
+                            <div>
+                                <span class="text-slate-400">মোট জমা:</span>
+                                <div class="font-semibold text-emerald-400">৳ ${deposited}</div>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">মিল খরচ:</span>
+                                <div class="font-semibold text-rose-400">৳ ${mealCost.toFixed(1)}</div>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">জরিমানা:</span>
+                                <div class="font-semibold text-amber-400">৳ ${fines}</div>
+                            </div>
+                            <div>
+                                <span class="text-slate-400">অবশিষ্ট ব্যালেন্স:</span>
+                                <div class="font-bold ${balance >= 0 ? 'text-emerald-400' : 'text-rose-500'}">৳ ${balance.toFixed(1)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openAddDepositModal() {
+            const select = document.getElementById('depositMemberSelect');
+            select.innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            document.getElementById('depositDate').value = TODAY_STR;
+            document.getElementById('addDepositModal').classList.remove('hidden');
+        }
+
+        function submitDepositEntry(e) {
+            e.preventDefault();
+            const date = document.getElementById('depositDate').value;
+            const memberId = document.getElementById('depositMemberSelect').value;
+            const amount = Number(document.getElementById('depositAmount').value);
+            const note = document.getElementById('depositNote').value;
+
+            const mem = state.members.find(m => m.id === memberId);
+
+            if (state.currentUser.isAdmin) {
+                state.deposits.push({ id: 'd_' + Date.now(), date, memberId, amount, note, status: 'approved' });
+                showToast('টাকা জমা রেকর্ড করা হয়েছে');
+            } else {
+                const req = {
+                    id: 'req_' + Date.now(),
+                    type: 'DEPOSIT_ENTRY',
+                    requestedBy: state.currentUser.name,
+                    date: date,
+                    dataPayload: { date, memberId, amount, note },
+                    details: `${mem.name}-এর ${date} তারিখে ৳${amount} টাকা জমার আবেদন (${note})`
+                };
+                state.pendingRequests.push(req);
+                showToast('জমার আবেদন এডমিনের কাছে জমা হয়েছে');
+            }
+
+            saveData();
+            closeModal('addDepositModal');
+        }
+
+        // MEMBERS LIST & MANAGEMENT
+        function renderMembersList() {
+            const grid = document.getElementById('membersListGrid');
+            grid.innerHTML = state.members.map(m => {
+                const isSelf = state.currentUser && state.currentUser.id === m.id;
+                const isAdmin = state.currentUser && state.currentUser.isAdmin;
+
+                return `
+                    <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-sm space-y-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center font-bold text-white text-lg shadow-md">
+                                ${m.name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-sm">${m.name}</h3>
+                                <p class="text-xs text-slate-400">ইউজারনেম: @${m.username}</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1 text-xs text-slate-300 pt-2 border-t border-slate-800">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-phone text-slate-500 w-4"></i>
+                                <span>${m.phone}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-lock text-slate-500 w-4"></i>
+                                <span class="text-slate-500 font-mono">••••••••</span>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-800/60">
+                            ${(isSelf || isAdmin) ? `
+                                <button onclick="openProfileEditModal('${m.id}')" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-xl transition border border-slate-700 flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-pen-to-square"></i> প্রোফাইল এডিট
+                                </button>
+                            ` : `<span class="text-[11px] text-slate-600 italic">নিজের তথ্য এডিট করা যাবে</span>`}
+
+                            ${(isAdmin) ? `
+                                <button onclick="handleDeleteMember('${m.id}')" class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs rounded-xl border border-rose-500/20 transition" title="মেম্বার ডিলিট">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openProfileEditModal(memberId) {
+            const mem = state.members.find(m => m.id === memberId);
+            if (!mem) return;
+
+            document.getElementById('editProfileMemberId').value = mem.id;
+            document.getElementById('editProfileName').value = mem.name;
+            document.getElementById('editProfilePhone').value = mem.phone;
+            document.getElementById('editProfileUsername').value = mem.username;
+
+            document.getElementById('profileEditModal').classList.remove('hidden');
+        }
+
+        function submitProfileEditRequest(e) {
+            e.preventDefault();
+            const memberId = document.getElementById('editProfileMemberId').value;
+            const newName = document.getElementById('editProfileName').value;
+            const newPhone = document.getElementById('editProfilePhone').value;
+            const newUsername = document.getElementById('editProfileUsername').value;
+
+            const mem = state.members.find(m => m.id === memberId);
+
+            if (state.currentUser.isAdmin) {
+                mem.name = newName;
+                mem.phone = newPhone;
+                mem.username = newUsername;
+                saveData();
+                showToast('প্রোফাইল তথ্য আপডেট হয়েছে');
+            } else {
+                const req = {
+                    id: 'req_' + Date.now(),
+                    type: 'PROFILE_EDIT',
+                    requestedBy: state.currentUser.name,
+                    date: TODAY_STR,
+                    dataPayload: { memberId, newName, newPhone, newUsername },
+                    details: `${mem.name}-এর নাম (${newName}), ফোন (${newPhone}) হালনাগাদ আবেদন`
+                };
+                state.pendingRequests.push(req);
+                saveData();
+                showToast('প্রোফাইল পরিবর্তনের অনুরোধ এডমিনের কাছে পাঠানো হয়েছে');
+            }
+
+            closeModal('profileEditModal');
+        }
+
+        function openAddMemberModal() {
+            document.getElementById('addMemberModal').classList.remove('hidden');
+        }
+
+        function handleAddMemberSubmit(e) {
+            e.preventDefault();
+            if (!state.currentUser.isAdmin) {
+                showToast('শুধুমাত্র এডমিন মেম্বার যুক্ত করতে পারবেন', 'error');
+                return;
+            }
+
+            const name = document.getElementById('newMemName').value;
+            const username = document.getElementById('newMemUsername').value;
+            const phone = document.getElementById('newMemPhone').value;
+
+            const newMem = {
+                id: 'm_' + Date.now(),
+                name,
+                username,
+                phone,
+                isAdmin: false
+            };
+
+            state.members.push(newMem);
+            saveData();
+            showToast('নতুন মেম্বার তৈরি হয়েছে');
+            closeModal('addMemberModal');
+        }
+
+        function handleDeleteMember(memberId) {
+            if (!state.currentUser.isAdmin) return;
+            if (confirm('আপনি কি নিশ্চিত যে এই মেম্বারকে ডিলিট করবেন?')) {
+                state.members = state.members.filter(m => m.id !== memberId);
+                saveData();
+                showToast('মেম্বার ডিলিট করা হয়েছে');
+            }
+        }
+
+        // PENDING REQUEST QUEUE & APPROVAL SYSTEM
+        function renderPendingRequests() {
+            const container = document.getElementById('pendingRequestsList');
+
+            if (state.pendingRequests.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-slate-900 border border-slate-800 p-8 text-center rounded-2xl text-slate-500 text-xs">
+                        <i class="fa-solid fa-circle-check text-3xl mb-2 text-emerald-500/40"></i>
+                        <p>কোনো পেন্ডিং রিকোয়েস্ট নেই!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const isAdmin = state.currentUser && state.currentUser.isAdmin;
+
+            container.innerHTML = state.pendingRequests.map(r => `
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] bg-brand-500/20 text-brand-300 font-semibold border border-brand-500/30">
+                                ${r.type}
+                            </span>
+                            <span class="text-xs text-slate-400 font-mono">${r.date}</span>
+                            <span class="text-xs text-slate-300 font-semibold">• ${r.requestedBy}</span>
+                        </div>
+                        <p class="text-xs text-white font-medium">${r.details}</p>
+                    </div>
+
+                    ${isAdmin ? `
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="approveRequest('${r.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition shadow">
+                                <i class="fa-solid fa-check mr-1"></i> অ্যাপ্রুভ
+                            </button>
+                            <button onclick="rejectRequest('${r.id}')" class="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 text-xs font-semibold rounded-xl transition">
+                                <i class="fa-solid fa-xmark mr-1"></i> বাতিল
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="text-xs text-amber-400/80 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 text-center">
+                            এডমিন অ্যাপ্রুভালের অপেক্ষায়
+                        </div>
+                    `}
+                </div>
+            `).join('');
+        }
+
+        function approveRequest(reqId) {
+            if (!state.currentUser.isAdmin) return;
+
+            const reqIndex = state.pendingRequests.findIndex(r => r.id === reqId);
+            if (reqIndex === -1) return;
+
+            const req = state.pendingRequests[reqIndex];
+            const payload = req.dataPayload;
+
+            if (req.type === 'MEAL_CHANGE') {
+                const { memberId, mealType, isChecked, date } = payload;
+                if (!state.meals[date]) state.meals[date] = {};
+                if (!state.meals[date][memberId]) state.meals[date][memberId] = { breakfast: 0, lunch: 0, dinner: 0, guest: 0 };
+
+                let val = 0;
+                if (isChecked) val = (mealType === 'breakfast') ? 0.5 : 1.0;
+                state.meals[date][memberId][mealType] = val;
+            }
+            else if (req.type === 'GUEST_MEAL') {
+                const { memberId, date, count } = payload;
+                if (!state.meals[date]) state.meals[date] = {};
+                if (!state.meals[date][memberId]) state.meals[date][memberId] = { breakfast: 0, lunch: 0, dinner: 0, guest: 0 };
+                state.meals[date][memberId].guest = count;
+            }
+            else if (req.type === 'BAZAR_ENTRY') {
+                state.bazar.push({
+                    id: 'b_' + Date.now(),
+                    date: payload.date,
+                    shopperIds: payload.shopperIds,
+                    items: payload.items,
+                    amount: payload.amount,
+                    status: 'approved'
+                });
+            }
+            else if (req.type === 'DEPOSIT_ENTRY') {
+                state.deposits.push({
+                    id: 'd_' + Date.now(),
+                    date: payload.date,
+                    memberId: payload.memberId,
+                    amount: payload.amount,
+                    note: payload.note,
+                    status: 'approved'
+                });
+            }
+            else if (req.type === 'PROFILE_EDIT') {
+                const mem = state.members.find(m => m.id === payload.memberId);
+                if (mem) {
+                    mem.name = payload.newName;
+                    mem.phone = payload.newPhone;
+                    mem.username = payload.newUsername;
+                }
+            }
+
+            state.pendingRequests.splice(reqIndex, 1);
+            saveData();
+            showToast('রিকোয়েস্ট অ্যাপ্রুভ হয়েছে');
+        }
+
+        function rejectRequest(reqId) {
+            if (!state.currentUser.isAdmin) return;
+            state.pendingRequests = state.pendingRequests.filter(r => r.id !== reqId);
+            saveData();
+            showToast('রিকোয়েস্ট বাতিল করা হয়েছে', 'error');
+        }
+
+        // DUTY SPINNER & FINES
+        function spinDuty() {
+            if (state.members.length === 0) return;
+            const randIndex = Math.floor(Math.random() * state.members.length);
+            const selected = state.members[randIndex];
+            document.getElementById('spinnedResult').innerText = `🎉 আজকে নির্বাচিত: ${selected.name}`;
+        }
+
+        function renderFines() {
+            const tbody = document.getElementById('fineTableBody');
+            tbody.innerHTML = state.fines.map(f => {
+                const mem = state.members.find(m => m.id === f.memberId);
+                return `
+                    <tr class="hover:bg-slate-800/40">
+                        <td class="p-2.5 text-slate-400 font-mono">${f.date}</td>
+                        <td class="p-2.5 font-medium text-white">${mem ? mem.name : 'অজানা'}</td>
+                        <td class="p-2.5 text-slate-300">${f.reason}</td>
+                        <td class="p-2.5 text-right font-bold text-rose-400">৳ ${f.amount}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openFineModal() {
+            if (!state.currentUser.isAdmin) {
+                showToast('শুধুমাত্র এডমিন জরিমানা ধার্য করতে পারবেন', 'error');
+                return;
+            }
+            const select = document.getElementById('fineMemberSelect');
+            select.innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+            document.getElementById('fineModal').classList.remove('hidden');
+        }
+
+        function submitFineEntry(e) {
+            e.preventDefault();
+            const memberId = document.getElementById('fineMemberSelect').value;
+            const reason = document.getElementById('fineReason').value;
+            const amount = Number(document.getElementById('fineAmount').value);
+
+            state.fines.push({
+                id: 'f_' + Date.now(),
+                date: TODAY_STR,
+                memberId,
+                reason,
+                amount
+            });
+
+            saveData();
+            closeModal('fineModal');
+            showToast('জরিমানা ধার্য করা হয়েছে');
+        }
+
+        // UTILITIES
+        function calculateUtilities() {
+            const rent = Number(document.getElementById('utilRent').value) || 0;
+            const electric = Number(document.getElementById('utilElectric').value) || 0;
+            const gas = Number(document.getElementById('utilGas').value) || 0;
+            const other = Number(document.getElementById('utilOther').value) || 0;
+
+            const total = rent + electric + gas + other;
+            const perMember = state.members.length > 0 ? (total / state.members.length) : 0;
+
+            document.getElementById('utilPerMember').innerText = `৳ ${perMember.toFixed(2)}`;
+        }
+
+        // HELPERS
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgColor = type === 'error' ? 'bg-rose-600' : 'bg-emerald-600';
+            const icon = type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check';
+
+            toast.className = `${bgColor} text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform transition duration-300 ease-out pointer-events-auto opacity-0 translate-y-2`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('opacity-0', 'translate-y-2'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+```

@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Hind Siliguri", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Hind Siliguri", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Hind Siliguri", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html, body {
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    background-color: #f8fafc;
+    color: #1e293b;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
